@@ -1,0 +1,110 @@
+---
+title: "Data Cleaning"
+author: "Jack Mrray"
+date: "1/30/2022"
+output: html_document
+---
+----------------
+Library and data reading in
+----------------
+```{r library}
+library(tidyverse)
+library(lubridate)
+```
+
+----------------
+Functions to Clean the data
+----------------
+->Only includes SOD reports - daily weather reports
+```{r data cleaning}
+Only_SOD <- function(FucntionDAta)
+{
+Daily_Data <- FucntionDAta %>%
+  mutate(time = hms(substr(FucntionDAta$DATE,12,19))) %>%
+  mutate(Date = ymd(substr(FucntionDAta$DATE,1,11))) %>%
+  filter(time == hms("23:59:00")) 
+#all SOD reports are releases at 23:59:00
+
+Redcuced_Daily_Data <- Daily_Data %>%
+  select(Date,STATION,REPORT_TYPE,starts_with("Dai"),ends_with("ude"))
+#only select column that include the daily weather (w/ some date and location data too)
+
+
+#Remove Duplicate dates
+j<-1
+removerow <- 0
+
+for (i in 2:(nrow(Redcuced_Daily_Data)))
+{
+    if(Redcuced_Daily_Data$Date[i] == Redcuced_Daily_Data$Date[i-1])
+    {
+        removerow[j] <- i
+        j<-j+1
+    }else
+    {
+      #print("ok")
+    }
+}
+
+Good_SOD_Data2 <- Redcuced_Daily_Data[-removerow,]
+Good_SOD_Data <- Good_SOD_Data2 %>%
+  drop_na(DailyAverageWindSpeed)
+return(Good_SOD_Data)
+  }
+```
+
+----------------
+Data read in 
+================
+```{r read in data}
+Cle_Data <- read.csv("C:/Users/jackm/Desktop/Data Science/Project/CLE data 2.1.2012 - 1.28.2022.csv")
+Pitt_Data <- read.csv("C:/Users/jackm/Desktop/Data Science/Project/PITT data 2.1.2012 - 1.28.2022.csv")
+```
+Only Daily SOD reports
+```{r}
+CLE_SOD_Data <- Only_SOD(Cle_Data)
+PITT_SOD_Data <- Only_SOD(Pitt_Data)
+All_SOD_DAta <- rbind(CLE_SOD_Data,PITT_SOD_Data)
+```
+Station Names
+```{r stations}
+names <- data.frame(
+  STATION = c(72524014820,72520094823),
+  NAME = c("CLE","PITT"))
+
+All_SOD_WNames <- All_SOD_DAta %>%
+  inner_join(names, by = "STATION" )
+```
+
+
+```{r plot some data}
+ggplot(All_SOD_WNames,aes(DailyAverageWindSpeed))+
+  geom_histogram(binwidth = 5, color = "Black", alpha = .7)+
+  facet_grid(rows = vars(NAME))+
+  labs(x = "WindSpeed",
+       title = "Histogram of Wind Speed")
+```
+```{r}
+All_SOD_WNames %>%
+  mutate(Day = yday(Date))%>%
+  group_by(Day,NAME)%>%
+  summarise(mean_wind = mean(DailyAverageWindSpeed))%>%
+ggplot(aes(Day,mean_wind,color = NAME))+
+   geom_point()+
+  labs(x = "days in year",
+       y = "average wind speed",
+       title = "Wind speed over the year (CLE - PITT)")
+```
+```{r}
+All_SOD_WNames%>%
+  select(Date,NAME,DailyAverageWindSpeed)%>%
+  pivot_wider(
+    names_from = NAME,
+    values_from = DailyAverageWindSpeed)%>%
+ggplot(aes(CLE,PITT))+
+  geom_bin2d()+
+  geom_density2d()+
+  labs(x = "CLE Wind Speed",
+       y = "PITT Wind Speed",
+       title = "PITT vs CLE Wind Speed")
+```

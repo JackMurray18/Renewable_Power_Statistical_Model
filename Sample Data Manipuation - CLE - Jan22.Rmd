@@ -1,0 +1,132 @@
+---
+title: "Sample Data"
+author: "Jack Mrray"
+date: "1/24/2022"
+output: html_document
+---
+----------------
+Library and data reading in
+----------------
+```{r library}
+library(tidyverse)
+library(lubridate)
+```
+
+```{r read in data}
+Big_Data <- read.csv("C:/Users/jackm/Desktop/Data Science/Project/CLE data 2.1.2012 - 1.28.2022.csv")
+```
+
+----------------
+# Cleaning the data
+----------------
+Only includes SOD reports - daily weather reports
+```{r data cleaning}
+Daily_Data <- Big_Data %>%
+  mutate(time = hms(substr(Big_Data$DATE,12,19))) %>%
+  mutate(Date = ymd(substr(Big_Data$DATE,1,11))) %>%
+  filter(time == hms("23:59:00")) 
+#all SOD reports are releases at 23:59:00
+
+Redcuced_Daily_Data <- Daily_Data %>%
+  select(Date,STATION,REPORT_TYPE,starts_with("Dai"))
+#only select column that include the daily weather (w/ some date and location data too)
+
+Redcuced_Daily_Data
+```
+
+--------------
+#Missing data
+--------------
+```{r NA}
+#All NA's in the SOD Data
+amount_missing_data <- Redcuced_Daily_Data %>%
+  summarise(sum(is.na(across(everything()))))
+amount_missing_data
+
+#All NA's in SOD Columns
+missing_data <- function(x) sum(is.na(x))
+
+amount_missing_data_col <-  Redcuced_Daily_Data %>%
+  summarise(across(everything(), missing_data))
+
+amount_missing_data_col
+```
+
+is there a patern in missing data
+```{r NA trend}
+NA_SOD <- Redcuced_Daily_Data %>%
+  mutate(WindSpeed_NA = 1*(1 == is.na(DailyAverageWindSpeed)),
+         Pressure_NA = 1*(1 == is.na(DailyAverageStationPressure))) %>%
+  #1 means the value is missing - 0 means its not missing
+  select(-(STATION:DailyMinimumDryBulbTemperature),-(DailySustainedWindDirection:DailyWeather))
+
+ggplot(NA_SOD, aes(Date,WindSpeed_NA))+
+  geom_point(alpha = .15, color = "blue")+
+  labs(title = "Date Vs. Missing Wind data")
+ggplot(NA_SOD, aes(Date,Pressure_NA))+
+  geom_point(alpha = .15, color = "orange")+
+  labs(title = "Date Vs Missing Pressure Data")
+```
+Visually, There seems to be no relation ship with data and missing data
+
+```{r}
+NA_SOD %>%
+  mutate(Weekday = weekdays(Date))%>%
+  group_by(Weekday) %>%
+  summarise(tots_Wind_NA = sum(WindSpeed_NA),
+            tots_Pressure_Na = sum(Pressure_NA))
+
+Monlthy_NA <- NA_SOD %>% 
+  mutate(Yr_Mon = ceiling_date(Date, unit = "month"))%>%
+  group_by(Yr_Mon) %>%
+  summarise(Na_count_wind = sum(WindSpeed_NA),
+            NA_count_pressure = sum(Pressure_NA)) %>%
+  pivot_longer(cols = c(Na_count_wind,NA_count_pressure), 
+               names_to = "Type", values_to = "CountMon")
+
+ggplot(Monlthy_NA, aes(Yr_Mon,CountMon, color = Type))+
+  geom_point(alpha = .5)+
+  scale_x_date("%y")
+```
+Several rows with missing data are duplicates 
+For example there may be two rows with the date 6-30-2012 but only the frist one contains any data
+
+loop below will remove duplicate data
+```{r}
+j<-1
+removerow <- 0
+
+for (i in 2:(nrow(NA_SOD)))
+{
+    if(NA_SOD$Date[i] == NA_SOD$Date[i-1])
+    {
+        removerow[j] <- i
+        j<-j+1
+    }else
+    {
+      #print("ok")
+    }
+}
+
+Good_SOD_Data <- Redcuced_Daily_Data[-removerow,]
+
+```
+
+
+#```{r fit of missing data}
+Missing_wind_pattern <- NA_SOD %>%
+  select(-Date, -Pressure_NA) 
+logistic_missing_wind <- glm(WindSpeed_NA ~ ., data = Missing_wind_pattern, family = "binomial")
+
+summary(logistic_missing_wind)$r.squared
+#  
+```
+# Basic data manipuation 
+```{r data manipualtion}
+Redcuced_Daily_Data %>%
+  group_by(week = week(Redcuced_Daily_Data$Date)) %>%
+  summarise(week_ave_wind = mean(DailySustainedWindSpeed),
+            week_sd_wind = sd(DailySustainedWindSpeed),
+            week_ave_pressure = mean(DailyAverageStationPressure),
+            week_sd_pressure = sd(DailyAverageStationPressure))
+```
