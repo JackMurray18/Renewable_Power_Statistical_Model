@@ -42,7 +42,7 @@ for (i in 2:(nrow(Redcuced_Daily_Data)))
         j<-j+1
     }else
     {
-      #print("ok")
+      #print("OK")
     }
 }
 
@@ -56,6 +56,7 @@ return(Good_SOD_Data)
 ----------------
 Data read in 
 ================
+From NOAA
 ```{r read in data}
 Cle_Data <- read.csv("C:/Users/jackm/Desktop/Data Science/Project/CLE data 2.1.2012 - 1.28.2022.csv")
 Pitt_Data <- read.csv("C:/Users/jackm/Desktop/Data Science/Project/PITT data 2.1.2012 - 1.28.2022.csv")
@@ -76,7 +77,9 @@ All_SOD_WNames <- All_SOD_DAta %>%
   inner_join(names, by = "STATION" )
 ```
 
-
+--------------------
+#WInds Data Visualizations
+====================
 ```{r plot some data}
 ggplot(All_SOD_WNames,aes(DailyAverageWindSpeed))+
   geom_histogram(binwidth = 5, color = "Black", alpha = .7)+
@@ -84,6 +87,10 @@ ggplot(All_SOD_WNames,aes(DailyAverageWindSpeed))+
   labs(x = "WindSpeed",
        title = "Histogram of Wind Speed")
 ```
+Wind speed - like other solar - seems to have a gamma like distribution 
+  * few values around days with No wind
+  * the bulk of days are between 5-10 days 
+  * heavily positively skewed 
 ```{r}
 All_SOD_WNames %>%
   mutate(Day = yday(Date))%>%
@@ -91,10 +98,13 @@ All_SOD_WNames %>%
   summarise(mean_wind = mean(DailyAverageWindSpeed))%>%
 ggplot(aes(Day,mean_wind,color = NAME))+
    geom_point()+
-  labs(x = "days in year",
-       y = "average wind speed",
-       title = "Wind speed over the year (CLE - PITT)")
+   geom_smooth(se = FALSE)+
+   labs(x = "days in year",
+        y = "average wind speed",
+        title = "Wind speed over the year (CLE - PITT)")
 ```
+Winter months tend to be windier than summer months - wind farms could counter act the heavier cloud cover and precipitation in these months. 
+However, these wind farms will supply less power in the summer. 
 ```{r}
 All_SOD_WNames%>%
   select(Date,NAME,DailyAverageWindSpeed)%>%
@@ -108,3 +118,74 @@ ggplot(aes(CLE,PITT))+
        y = "PITT Wind Speed",
        title = "PITT vs CLE Wind Speed")
 ```
+Cleveland is winder than Pittsburgh - this could be cased by its proximity to the great lakes. Possible that we should favor places to the coast line when researching places with eh best wind speed. 
+
+------------------
+#other wether data
+------------------
+Need to turn the T (Trace) to a numeric measure 
+    *Trace means less then .01 inches of precipitation with some accumulation
+```{r precipitation}
+for (j in 1:nrow(All_SOD_WNames))
+{
+  if(All_SOD_WNames$DailySnowfall[j] == "T" || All_SOD_WNames$DailySnowfall[j] == "" || All_SOD_WNames$DailySnowfall[j] == "Ts")
+  {
+    All_SOD_WNames$DailySnowfall[j] = .005
+  }
+  if(All_SOD_WNames$DailyPrecipitation[j] == "T" || All_SOD_WNames$DailyPrecipitation[j] == "" || All_SOD_WNames$DailyPrecipitation[j] == "Ts")
+  {
+    All_SOD_WNames$DailyPrecipitation[j] = .005
+  }
+  if(All_SOD_WNames$DailySnowDepth[j] == "T")
+  {
+    All_SOD_WNames$DailySnowDepth[j] = 0
+  }
+    #all snow less than .01 inches is assumed to melt or blow off solar panels
+}
+
+All_SOD_WNames_Rain <- All_SOD_WNames %>%
+  mutate(snow = as.numeric(DailySnowfall),
+         rain = as.numeric(DailyPrecipitation),
+         TotPrecip = (snow+rain))
+```
+
+Visualize the Precipitation
+```{r}
+All_SOD_WNames_Rain %>%
+  group_by(wk = week(Date),
+           NAME)%>%
+  summarise(meanPrecip = mean(TotPrecip))%>%
+  ggplot(aes(wk,meanPrecip, color = NAME))+
+  geom_point()+
+  geom_smooth(se = FALSE)+
+  labs(x = "Weeks",
+       y = "Total Precipitation (in)",
+       title = "Average Precipitation Throughout the Year")
+  
+```
+Since their is more rain/snow in the winter months in the rust belt - it is logical to assume more wind farms are needed to support this region in the winter 
+
+#possible predictors
+--------------------
+1) latitude
+2) longitude
+3) time of year
+4) the year
+  *maybe there is a upward/downward trend in radiation or wind speed due to global warming or something
+5) pressure
+  *low pressure predicts bad weather
+      - high winds
+      - heavier cloud cover
+  *high pressure predicts good weather
+      - low winds
+      - less clouds
+  *maybe compounded with time of year but maybe places with constant pressure have more consistent renewable production 
+6) precipitation 
+  *more precipitation means less solar production
+7) snow depth 
+  *more snow on the ground the less solar production
+  *more work and maintenance costs
+8) wild fires and smog (air quality)
+9) is it coastal city
+  *EX: Cleveland may have more wind prediction because its on Lake Erie
+10) Cloud Cover
