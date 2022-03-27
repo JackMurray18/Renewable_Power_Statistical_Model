@@ -1,0 +1,107 @@
+---
+title: "combinng the solar data - CLE Area"
+author: "Jack Murray"
+date: "2/6/2022"
+output: html_document
+---
+
+```{r library}
+library(tidyverse)
+library(lubridate)
+
+```
+
+#read in 
+--------
+From the NSRDB
+```{r readin}
+Solar_Data <- function(Folder_Location)
+{
+  
+data_files <- list.files(Folder_Location) 
+
+for(i in 1:length(data_files)) 
+{                              
+  assign(
+    paste0("data", i),                                
+    read.csv(paste0(Folder_Location,"/",data_files[i])))
+}
+
+#Cleaning and combining the data
+#------------------
+#remove rows 1-2
+
+Solar_Data <- function(Solar) 
+{
+#pull important location identifiers
+  long <- Solar$Longitude[1]
+  lat <-Solar$Latitude[1]
+  loc_ID <- Solar$Location.ID[1]
+  
+  #actually data starts on line 2
+  col.name <- Solar[2,1:10]
+  
+  #remove first 2 lines --> only contains definitions and location information 
+  Solar_good <- Solar%>%
+    slice(-c(1,2))%>%
+    select(1:10)
+  
+  #rename the columns with headers on line 2 
+  colnames(Solar_good) <- col.name
+  
+  
+#Make tidy data with location information ---#
+  length.of.data <- (1:length(Solar_good$Year))
+  
+  #data from of location data (as long as the other data frame)
+  lat.long.loc <- data.frame(Latitude = length.of.data,
+                             Longitude = length.of.data,
+                             Locations = length.of.data)
+  
+  #adds the lat-long-ID to each row
+  for (i in length.of.data)
+  {
+    lat.long.loc$Latitude[i] <- lat
+    lat.long.loc$Longitude[i] <- long
+    lat.long.loc$Locations[i] <- loc_ID
+  }
+  
+  #combine solar and location data
+  LOC.and.Solar <- cbind(lat.long.loc,Solar_good)
+
+#return good data frame
+  return(LOC.and.Solar)
+}
+
+#--- Combine with the other data sets --#
+
+all_solar <- Solar_Data(data1)
+
+for (j in 1:length(data_files))
+{
+  tempdataframe <- Solar_Data((eval(parse(text = paste("data", j, sep = "")))))
+  
+  all_solar <- rbind(all_solar,tempdataframe)
+}
+
+
+#--- making a Date and time col ---#
+date.all_solar <- all_solar %>% 
+  mutate(DATE = ymd(paste(Year,Month,Day,sep = "-")),
+         DHI.num = as.numeric(DHI),
+         GHI.num = as.numeric(GHI),
+         DNI.num = as.numeric(DNI),
+         CloudType.num = as.numeric(`Cloud Type`),
+         WindSpeed.num = as.numeric(`Wind Speed`))%>%
+  select(-Year,-Month,-Day,-DHI,-GHI,-DNI,-`Cloud Type`,-`Wind Speed`)
+
+#return the data frame with tidy solar data
+return(date.all_solar)
+}
+```
+
+#save as a cvs
+--------------
+```{r}
+write.csv(date.all_solar, file = paste0(long,lat,"1998-2020 solar data")
+```
