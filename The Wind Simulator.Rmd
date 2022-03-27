@@ -1,0 +1,133 @@
+---
+title: "The Simulator"
+author: "Jack Murray"
+date: "3/21/2022"
+output: html_document
+---
+
+```{r library}
+library(ggplot2)
+library(tidyverse)
+library(lubridate)
+library(caret)
+library(MASS)
+```
+
+```{r read in}
+daily.ave <- read.csv("Daily Averages per Location")
+```
+
+## Preproceces the data a bit
+  + Only fit 1 location for now
+    + 1020062
+  + Convert date in to days since the first observation 
+```{r onelocal}
+orgin_Date <- (as.Date(daily.ave$DATE[1]))
+
+location1 <- daily.ave %>%
+  filter(Locations ==1020062)%>%
+  mutate(total.days = day(days(as.Date(DATE)-orgin_Date)))
+```
+
+## fitting parameters
+  + f(x) = A*cos(pi*total.days/185)+C + A2*cos(pi*total.days/92)+C2
+  + used cosine since the data starts in winter when the wind speeds are at its highest
+```{r}
+#cross validation 
+#folds <- createFolds(location1$daily_Wind, 
+#                     k = 5, 
+#                     returnTrain = TRUE)
+#ctrl <- trainControl(method = "cv",
+#                     index = folds)
+
+#traing for loop
+A <- 2
+A2 <- 2
+C <- 2
+C2 <- 2
+b2 <- 0
+i <- 0
+w<-1
+q<-1
+
+values<-seq(from =1, to=(11*11*5*5*11), by=1)
+
+rmse.error.wind.tot <-data.frame(A=values,A2=values,C=values,C2=values,b2=values,RMSE=values)
+pred.sin.days <- seq(1,nrow(location1))
+
+for(A in seq(from=0,to=5,by=.5))
+{
+  for(A2 in seq(from=0,to=5,by=.5))
+  {
+    for(C in seq(from = 0, to = 2, by=.5))
+    {
+      for(C2 in seq(from = 0, to = 2, by=.5))
+      {
+       for(b2 in seq(from = 1, to = 101, by=10))
+      {
+        rse.error.wind <-0
+        rmse.error.wind <-0
+      
+      for(i in seq(from=1,to=nrow(location1),by=1))
+      {
+        pred.sin.days[i] <- (((A*cos((pi*location1$total.days[i])/185))+C)+
+                               ((A2*sin((pi*location1$total.days[i])/b2))+C2)) 
+        rse.error.wind <- rse.error.wind + ((pred.sin.days[i]-location1$daily_Wind[i])^2)
+      }
+      rmse.error.wind <- sqrt(rse.error.wind/nrow(location1))
+      
+      rmse.error.wind.tot$A[w] <- A
+      rmse.error.wind.tot$A2[w] <- A2
+      rmse.error.wind.tot$C[w] <- C
+      rmse.error.wind.tot$C2[w] <- C2
+      #rmse.error.wind.tot$b2[w] <- b2
+      rmse.error.wind.tot$RMSE[w] <- rmse.error.wind
+      w<-w+1
+    }
+  }
+ # q<-q+1
+  }
+  }
+}
+
+```
+
+## Selecting the best parameters
+```{r}
+#rmse.error.wind.tot %>%
+#  ggplot(aes(x=b,y=RMSE,color=C))+
+#  geom_smooth(se=FALSE)
+
+rmse.error.wind.tot %>%
+  filter(RMSE==min(rmse.error.wind.tot$RMSE))
+```
+
+## Visualize the fittied equation
+  + may need to filter down the number of days to see the sinusoidal motion
+```{r}
+fitted1<-location1 %>%
+  mutate(sin.days = (((.5*cos((pi*total.days)/(185)))+.5) + (0*cos((pi*total.days)/(185))+.5)))
+
+fitted1 %>%
+  filter(total.days>1000,
+         total.days<4000)%>%
+  ggplot()+
+  geom_line(aes(y = sin.days, x = total.days),se=FALSE,color="red")+
+  geom_point(aes(total.days,daily_Wind),alpha = .2)
+```
+
+## Distibution of errors
+```{r}
+error <- fitted1%>%
+  mutate(errors = daily_Wind-sin.days)
+
+fit <- fitdistr(error$errors, densfun="normal") 
+fit
+fit$loglik
+
+error %>%
+  ggplot(aes(errors))+
+  geom_histogram(bins=20,alpha=.4,fill="blue",color="black")
+
+```
+  + Errors are mostly normal around 0. However, there seems to be some negative skewing and the peak is not on 0. Indicating there are more values that are overestimate of the wind speed than underestimates. 
