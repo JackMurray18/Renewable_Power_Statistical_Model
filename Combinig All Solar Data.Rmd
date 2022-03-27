@@ -20,7 +20,7 @@ folders <- list.files("C:/Users/jackm/Desktop/Data Science/Project/Renewable_Pow
 ```{r}
 for (i in 24:length((folders)))
 {
-    folder_locations <- paste0("C:/Users/jackm/Desktop/Data Science/Project/Renewable_Power_Statistical_Model/SOLAR_DATA/",folders[i],"/",folders[i])
+    folder_locations <- paste0("C:/Users/jackm/Desktop/Data Science/Project/SOLAR_DATA/",folders[i],"/",folders[i])
   
     data <- Solar_Data(folder_locations)
     
