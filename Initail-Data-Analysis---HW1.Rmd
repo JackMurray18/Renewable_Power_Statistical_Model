@@ -19,13 +19,13 @@ library(GGally)
 -------------
 From Combined Solar Data 
 ```{r readin}
-data_files <- list.files("C:/Users/jackm/Desktop/Data Science/Project/Renewable_Power_Statistical_Model/TIDY_SOLAR_DATA")
+data_files <- list.files("C:/Users/jackm/Desktop/Data Science/Project/TIDY_SOLAR_DATA")
 
 for(i in 1:length(data_files)) 
 {                              
   assign(
     paste0("data", i),                                
-    read.csv(paste0("C:/Users/jackm/Desktop/Data Science/Project/Renewable_Power_Statistical_Model/TIDY_SOLAR_DATA/",data_files[i])))
+    read.csv(paste0("C:/Users/jackm/Desktop/Data Science/Project/TIDY_SOLAR_DATA/",data_files[i])))
 }
 ```
 
