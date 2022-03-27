@@ -26,12 +26,20 @@ orgin_Date <- (as.Date(daily.ave$DATE[1]))
 
 location1 <- daily.ave %>%
   filter(Locations ==1020062)%>%
-  mutate(total.days = day(days(as.Date(DATE)-orgin_Date)))
+  mutate(total.days = day(days(as.Date(DATE)-orgin_Date)),
+         log.daily_wimd = log(daily_Wind))
 ```
 
 ## fitting parameters
-  + f(x) = A*cos(pi*total.days/185)+C + A2*cos(pi*total.days/92)+C2
-  + used cosine since the data starts in winter when the wind speeds are at its highest
+ $$
+  A\times(\cos(\frac{\pi*days}{182.5})+
+  A\times(\cos(\frac{\pi*days}{91.25})+
+  A\times(\cos(\frac{\pi*days}{45.625})+
+  A\times(\sin(\frac{\pi*days}{182.5})+
+  A\times(\sin(\frac{\pi*days}{91.25})+
+  A\times(\cos(\frac{\pi*days}{45.625})+
+  C
+  $$ 
 ```{r}
 #cross validation 
 #folds <- createFolds(location1$daily_Wind, 
@@ -44,52 +52,70 @@ location1 <- daily.ave %>%
 A <- 2
 A2 <- 2
 C <- 2
-C2 <- 2
-b2 <- 0
+A3 <- 2
+A4 <- 2
 i <- 0
 w<-1
 q<-1
+size <- 4*4*4*4*4*4*5
 
-values<-seq(from =1, to=(11*11*5*5*11), by=1)
+values<-seq(from =1, to=(size), by=1)
 
-rmse.error.wind.tot <-data.frame(A=values,A2=values,C=values,C2=values,b2=values,RMSE=values)
+rmse.error.wind.tot <-data.frame(A=values,A2=values,A3=values,A4=values,A5=values,A6=values,C=values,RMSE=values)
 pred.sin.days <- seq(1,nrow(location1))
 
-for(A in seq(from=0,to=5,by=.5))
+for(A in seq(from=.1,to=.4,by=.1))
 {
-  for(A2 in seq(from=0,to=5,by=.5))
+  for(A2 in seq(from=.1,to=.4,by=.1))
   {
-    for(C in seq(from = 0, to = 2, by=.5))
+    for(C in seq(from = -1, to = 1, by=.5))
     {
-      for(C2 in seq(from = 0, to = 2, by=.5))
+      for(A3 in seq(from=.1,to=.4,by=.1))
       {
-       for(b2 in seq(from = 1, to = 101, by=10))
-      {
-        rse.error.wind <-0
-        rmse.error.wind <-0
+        for(A4 in seq(from=.1,to=.4,by=.1))
+        {
+          for(A5 in seq(from=.1,to=.4,by=.1))
+          {
+            for(A6 in seq(from=.1,to=.4,by=.1))
+            {
+              rse.error.wind <-0
+              rmse.error.wind <-0
       
-      for(i in seq(from=1,to=nrow(location1),by=1))
-      {
-        pred.sin.days[i] <- (((A*cos((pi*location1$total.days[i])/185))+C)+
-                               ((A2*sin((pi*location1$total.days[i])/b2))+C2)) 
-        rse.error.wind <- rse.error.wind + ((pred.sin.days[i]-location1$daily_Wind[i])^2)
-      }
-      rmse.error.wind <- sqrt(rse.error.wind/nrow(location1))
-      
-      rmse.error.wind.tot$A[w] <- A
-      rmse.error.wind.tot$A2[w] <- A2
-      rmse.error.wind.tot$C[w] <- C
-      rmse.error.wind.tot$C2[w] <- C2
-      #rmse.error.wind.tot$b2[w] <- b2
-      rmse.error.wind.tot$RMSE[w] <- rmse.error.wind
-      w<-w+1
-    }
-  }
+            for(i in seq(from=1,to=nrow(location1),by=1))
+            {
+              pred.sin.days[i] <- ((A2*cos((pi*location1$total.days[i])/91.25))+
+                                  (A*cos((pi*location1$total.days[i])/182.5))+
+                                  (A3*sin((pi*location1$total.days[i])/182.5))+
+                                  (A4*sin((pi*location1$total.days[i])/91.25))+
+                                  (A5*sin((pi*location1$total.days[i])/45.625))+
+                                  (A6*cos((pi*location1$total.days[i])/45.625))+
+                                  C)
+              rse.error.wind <- rse.error.wind + ((pred.sin.days[i]-location1$log.daily_wimd[i])^2)
+            } # loop of all obs.
+            rmse.error.wind <- sqrt(rse.error.wind/nrow(location1))
+            
+            rmse.error.wind.tot$A[w] <- A
+            rmse.error.wind.tot$A2[w] <- A2
+            rmse.error.wind.tot$A3[w] <- A3
+            rmse.error.wind.tot$A4[w] <- A4
+            rmse.error.wind.tot$A5[w] <- A5
+            rmse.error.wind.tot$A6[w] <- A6
+            rmse.error.wind.tot$C[w] <- C
+            rmse.error.wind.tot$RMSE[w] <- rmse.error.wind
+            w<-w+1
+            } # lop A6
+          } #loop of A5
+        } #loop of A4
+      } # loop of A3
  # q<-q+1
+    } # Loop of C
+  } # loop of A2
+  if (nrow(rmse.error.wind.tot)==size)
+  {
+    break
   }
-  }
-}
 
+} #loop of A
 ```
 
 ## Selecting the best parameters
@@ -98,22 +124,29 @@ for(A in seq(from=0,to=5,by=.5))
 #  ggplot(aes(x=b,y=RMSE,color=C))+
 #  geom_smooth(se=FALSE)
 
-rmse.error.wind.tot %>%
+best.rmse.wind <- rmse.error.wind.tot %>%
   filter(RMSE==min(rmse.error.wind.tot$RMSE))
+best.rmse.wind 
 ```
 
 ## Visualize the fittied equation
   + may need to filter down the number of days to see the sinusoidal motion
 ```{r}
 fitted1<-location1 %>%
-  mutate(sin.days = (((.5*cos((pi*total.days)/(185)))+.5) + (0*cos((pi*total.days)/(185))+.5)))
+  mutate(sin.days = (best.rmse.wind$A*cos((pi*location1$total.days)/182.5))+
+                    (best.rmse.wind$A2*cos((pi*location1$total.days)/91.25))+
+                    (best.rmse.wind$A3*sin((pi*location1$total.days)/182.5))+
+                    (best.rmse.wind$A4*sin((pi*location1$total.days)/91.25))+
+                    (best.rmse.wind$A5*sin((pi*location1$total.days)/45.625))+
+                    (best.rmse.wind$A6*sin((pi*location1$total.days)/45.625))+
+                    best.rmse.wind$C)
 
 fitted1 %>%
-  filter(total.days>1000,
+  filter(total.days>3000,
          total.days<4000)%>%
   ggplot()+
   geom_line(aes(y = sin.days, x = total.days),se=FALSE,color="red")+
-  geom_point(aes(total.days,daily_Wind),alpha = .2)
+  geom_point(aes(total.days,log.daily_wimd),alpha = .2)
 ```
 
 ## Distibution of errors
