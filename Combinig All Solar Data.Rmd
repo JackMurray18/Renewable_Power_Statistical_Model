@@ -1,0 +1,31 @@
+---
+title: "combining all solar data"
+author: "Jack Murray"
+date: "2/23/2022"
+output: html_document
+---
+
+```{r library}
+library(tidyverse)
+library(lubridate)
+```
+
+```{r}
+folders <- list.files("C:/Users/jackm/Desktop/Data Science/Project/Renewable_Power_Statistical_Model/SOLAR_DATA") 
+```
+
+#IMPORTANT
+  * when extracting zip files of solar data - the csv files are in a folder that is nested in a folder
+  * BOTH folders have the same name
+```{r}
+for (i in 24:length((folders)))
+{
+    folder_locations <- paste0("C:/Users/jackm/Desktop/Data Science/Project/Renewable_Power_Statistical_Model/SOLAR_DATA/",folders[i],"/",folders[i])
+  
+    data <- Solar_Data(folder_locations)
+    
+    write.csv(data, file = paste0("1998-2020 solar data","_location_",i))
+}
+
+```
+(see "Combining Solar Data" or "Combining Solar Data-function" for explanation on the function)
