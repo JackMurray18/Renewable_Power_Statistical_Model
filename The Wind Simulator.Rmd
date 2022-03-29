@@ -83,14 +83,14 @@ for(A in seq(from=.1,to=.4,by=.1))
       
             for(i in seq(from=1,to=nrow(location1),by=1))
             {
-              pred.sin.days[i] <- ((A2*cos((pi*location1$total.days[i])/91.25))+
+             pred.sin.days[i] <- ((A2*cos((pi*location1$total.days[i])/91.25))+
                                   (A*cos((pi*location1$total.days[i])/182.5))+
                                   (A3*sin((pi*location1$total.days[i])/182.5))+
                                   (A4*sin((pi*location1$total.days[i])/91.25))+
-                                  (A5*sin((pi*location1$total.days[i])/45.625))+
-                                  (A6*cos((pi*location1$total.days[i])/45.625))+
+                                  (A5*sin((pi*location1$total.days[i])/22.8125))+
+                                  (A6*cos((pi*location1$total.days[i])/22.8125))+
                                   C)
-              rse.error.wind <- rse.error.wind + ((pred.sin.days[i]-location1$log.daily_wimd[i])^2)
+              rse.error.wind <- rse.error.wind + ((pred.sin.days[i]-location1$daily_Wind[i])^2)
             } # loop of all obs.
             rmse.error.wind <- sqrt(rse.error.wind/nrow(location1))
             
@@ -146,7 +146,7 @@ fitted1 %>%
          total.days<4000)%>%
   ggplot()+
   geom_line(aes(y = sin.days, x = total.days),se=FALSE,color="red")+
-  geom_point(aes(total.days,log.daily_wimd),alpha = .2)
+  geom_point(aes(total.days,daily_Wind),alpha = .2)
 ```
 
 ## Distibution of errors
@@ -160,7 +160,18 @@ fit$loglik
 
 error %>%
   ggplot(aes(errors))+
-  geom_histogram(bins=20,alpha=.4,fill="blue",color="black")
+  geom_histogram(bins=20,alpha=.4,fill="blue",color="black")+
+  labs(title="Distribution of Error",
+       subtitle = "Positive error means the actual wind speed is higher than what the model anticpated")
+
 
 ```
   + Errors are mostly normal around 0. However, there seems to be some negative skewing and the peak is not on 0. Indicating there are more values that are overestimate of the wind speed than underestimates. 
+  
+### Notes
+  + Taking the Log of wind speed increases RMSE and make the data less normal
+  + a period of just 1 year works really well
+    + multi-year periods seem to have no effect (small coef) or introduce a lot of error (larger coef)
+    + less than half year periods also have limited benefit and are fitted to have small
+  + sine terms have the largest effect - 
+    + Tend to be fitted with the largest values than cosine terms
