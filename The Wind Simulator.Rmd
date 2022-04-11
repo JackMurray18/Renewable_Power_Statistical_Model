@@ -11,23 +11,41 @@ library(tidyverse)
 library(lubridate)
 library(caret)
 library(MASS)
+library(rcompanion)
 ```
 
 ```{r read in}
 daily.ave <- read.csv("Daily Averages per Location")
+
+set.seed(100)
+
+#--only using 15% of the data for each location 
+small_daily.ave <- slice_sample(daily.ave,prop = .15)
+
+#--ensures the same data set is always selected
+nrow(small_daily.ave)
+mean(small_daily.ave$daily_Wind)
 ```
 
 ## Preproceces the data a bit
-  + Only fit 1 location for now
+  + Only fit 1 location at a time
     + 1020062
   + Convert date in to days since the first observation 
 ```{r onelocal}
 orgin_Date <- (as.Date(daily.ave$DATE[1]))
 
-location1 <- daily.ave %>%
-  filter(Locations ==1020062)%>%
-  mutate(total.days = day(days(as.Date(DATE)-orgin_Date)),
-         log.daily_wimd = log(daily_Wind))
+#--select 1 location at a time to fit 
+  # dont know how make all locatison go at once 
+  # in case a model is fit really badly or theres sone error in the data
+location <- 1412499
+
+#--creates a days since 01/01/1998 
+  #variable to represt time in the sine/cosine fucntion then
+location1 <- small_daily.ave %>%
+  filter(Locations ==location)%>%
+  mutate(total.days = day(days(as.Date(DATE)-orgin_Date)),#--creates a days since 01/01/1998  variable to represt time in the sine/cosine fucntion then
+         norm.daily_wimd = (daily_Wind-mean(daily_Wind))/sd(daily_Wind)) #scale and center the data
+  head(location1,10)
 ```
 
 ## fitting parameters
@@ -41,14 +59,6 @@ location1 <- daily.ave %>%
   C
   $$ 
 ```{r}
-#cross validation 
-#folds <- createFolds(location1$daily_Wind, 
-#                     k = 5, 
-#                     returnTrain = TRUE)
-#ctrl <- trainControl(method = "cv",
-#                     index = folds)
-
-#traing for loop
 A <- 2
 A2 <- 2
 C <- 2
@@ -57,96 +67,121 @@ A4 <- 2
 i <- 0
 w<-1
 q<-1
-size <- 4*4*4*4*4*4*5
 
+#--number of models tests
+size <- 10*6*5*10*3*3
 values<-seq(from =1, to=(size), by=1)
+#-- data frame store model and performance
+rsq.error.wind.tot <-data.frame(A=values,A2=values,A3=values,A4=values,A5=values,A6=values,C=values,loglik_Norm=values,RMSE=values)
 
-rmse.error.wind.tot <-data.frame(A=values,A2=values,A3=values,A4=values,A5=values,A6=values,C=values,RMSE=values)
+#--store error and predictions for each observation
 pred.sin.days <- seq(1,nrow(location1))
+error.wind <- seq(1,nrow(location1))
+#--store true variation form the mean
+  #mean.wind <- mean(location1$daily_Wind)
 
-for(A in seq(from=.1,to=.4,by=.1))
+#--tests each combination of model parameters
+for(A in seq(from=0,to=1.35,by=.15)) #10
 {
-  for(A2 in seq(from=.1,to=.4,by=.1))
+  for(A2 in seq(from=0,to=.5,by=.1)) #6
   {
-    for(C in seq(from = -1, to = 1, by=.5))
+    for(C in seq(from = -.1, to = .1, by=.05)) #5
     {
-      for(A3 in seq(from=.1,to=.4,by=.1))
+      for(A3 in seq(from=-.1,to=.8,by=.1)) #10
       {
-        for(A4 in seq(from=.1,to=.4,by=.1))
-        {
-          for(A5 in seq(from=.1,to=.4,by=.1))
+        #for(A4 in seq(from=0,to=.4,by=.1)) #0
+        #{
+          for(A5 in seq(from=-.1,to=.1,by=.1)) #3
           {
-            for(A6 in seq(from=.1,to=.4,by=.1))
+            for(A6 in seq(from=-.1,to=.1,by=.1)) #3
             {
-              rse.error.wind <-0
-              rmse.error.wind <-0
+              #resets the rsq and sum of error for each model
+                rse.error.wind <-0
+                #rsq.error.wind <-0
+                #rse.total.error <-0
+                rmse.error.wind <-0
       
             for(i in seq(from=1,to=nrow(location1),by=1))
             {
-             pred.sin.days[i] <- ((A2*cos((pi*location1$total.days[i])/91.25))+
+              #--predicts the value for each observation
+              pred.sin.days[i] <- ((A2*cos((pi*location1$total.days[i])/91.25))+
                                   (A*cos((pi*location1$total.days[i])/182.5))+
                                   (A3*sin((pi*location1$total.days[i])/182.5))+
-                                  (A4*sin((pi*location1$total.days[i])/91.25))+
-                                  (A5*sin((pi*location1$total.days[i])/22.8125))+
-                                  (A6*cos((pi*location1$total.days[i])/22.8125))+
+                                  (A2*sin((pi*location1$total.days[i])/91.25))+
+                                  (A5*sin((pi*location1$total.days[i])/45.625))+
+                                  (A6*cos((pi*location1$total.days[i])/45.625))+
                                   C)
-              rse.error.wind <- rse.error.wind + ((pred.sin.days[i]-location1$daily_Wind[i])^2)
-            } # loop of all obs.
-            rmse.error.wind <- sqrt(rse.error.wind/nrow(location1))
+              #--calculated the prediction error and observation error from the mean                    
+              rse.error.wind <- rse.error.wind + ((pred.sin.days[i]-location1$norm.daily_wimd[i])^2)
+              #rse.total.error <- rse.total.error + ((location1$norm.daily_wimd[i]-mean.wind)^2)
+
+            error.wind[i]<-(pred.sin.days[i]-location1$norm.daily_wimd[i])
             
-            rmse.error.wind.tot$A[w] <- A
-            rmse.error.wind.tot$A2[w] <- A2
-            rmse.error.wind.tot$A3[w] <- A3
-            rmse.error.wind.tot$A4[w] <- A4
-            rmse.error.wind.tot$A5[w] <- A5
-            rmse.error.wind.tot$A6[w] <- A6
-            rmse.error.wind.tot$C[w] <- C
-            rmse.error.wind.tot$RMSE[w] <- rmse.error.wind
+            } # loop of all obs.
+                #rsq.error.wind <- 1-(rse.error.wind/rse.total.error)
+                rmse.error.wind <- sqrt((rse.error.wind)/nrow(location1))
+
+            fit.error.wind <- fitdistr(error.wind, densfun="normal")
+            loglik.error.fit <- fit.error.wind$loglik
+            
+            rsq.error.wind.tot$A[w] <- A
+            rsq.error.wind.tot$A2[w] <- A2
+            rsq.error.wind.tot$A3[w] <- A3
+            rsq.error.wind.tot$A4[w] <- A2
+            rsq.error.wind.tot$A5[w] <- A5
+            rsq.error.wind.tot$A6[w] <- A6
+            rsq.error.wind.tot$C[w] <- C
+            rsq.error.wind.tot$loglik_Norm[w] <-loglik.error.fit 
+            rsq.error.wind.tot$RMSE[w] <- rmse.error.wind
             w<-w+1
             } # lop A6
           } #loop of A5
-        } #loop of A4
+        #} #loop of A4
       } # loop of A3
- # q<-q+1
     } # Loop of C
   } # loop of A2
-  if (nrow(rmse.error.wind.tot)==size)
-  {
-    break
-  }
-
+  #--stops the loop when all model combinations are tested
+  #if (nrow(rsq.error.wind.tot)==size)
+  #{
+  #  break
+  #}
 } #loop of A
 ```
 
-## Selecting the best parameters
+## Results
+  + Parameters with the largest Log Likelihood and smallest RMSE
 ```{r}
-#rmse.error.wind.tot %>%
-#  ggplot(aes(x=b,y=RMSE,color=C))+
-#  geom_smooth(se=FALSE)
+#--removes any errors or miscalculations form bad/extraneous models or incorrectly passed numbers
+real.rsq.wind <- rsq.error.wind.tot %>%
+  filter(loglik_Norm<1000)
 
-best.rmse.wind <- rmse.error.wind.tot %>%
-  filter(RMSE==min(rmse.error.wind.tot$RMSE))
-best.rmse.wind 
+#--selects the best model
+  # has the largest log.likelihood and then smallest RMSE
+best.loglik.wind <- rsq.error.wind.tot %>%
+  filter(loglik_Norm==max(rsq.error.wind.tot$loglik_Norm))
+
+best.rsq.wind <-best.loglik.wind %>%
+  filter(RMSE==min(best.loglik.wind$RMSE))
+best.rsq.wind
 ```
 
 ## Visualize the fittied equation
-  + may need to filter down the number of days to see the sinusoidal motion
 ```{r}
 fitted1<-location1 %>%
-  mutate(sin.days = (best.rmse.wind$A*cos((pi*location1$total.days)/182.5))+
-                    (best.rmse.wind$A2*cos((pi*location1$total.days)/91.25))+
-                    (best.rmse.wind$A3*sin((pi*location1$total.days)/182.5))+
-                    (best.rmse.wind$A4*sin((pi*location1$total.days)/91.25))+
-                    (best.rmse.wind$A5*sin((pi*location1$total.days)/45.625))+
-                    (best.rmse.wind$A6*sin((pi*location1$total.days)/45.625))+
-                    best.rmse.wind$C)
+  mutate(sin.days = (best.rmse.wind$A*cos((pi*location1$total.days)/182.5))+ #.7to 1.1
+                    (best.rmse.wind$A2*cos((pi*location1$total.days)/91.25))+ #maybe 0 - very small
+                    (best.rmse.wind$A3*sin((pi*location1$total.days)/182.5))+ #.4 to .7
+                    (best.rmse.wind$A4*sin((pi*location1$total.days)/91.25))+ #.2 to .5
+                    (best.rmse.wind$A5*sin((pi*location1$total.days)/45.625))+ # maybe 0 - very small
+                    (best.rmse.wind$A6*cos((pi*location1$total.days)/45.625))+ #-.1 to 0 
+                    1.1) # from 1 to 1.5
 
 fitted1 %>%
   filter(total.days>3000,
          total.days<4000)%>%
   ggplot()+
-  geom_line(aes(y = sin.days, x = total.days),se=FALSE,color="red")+
-  geom_point(aes(total.days,daily_Wind),alpha = .2)
+  geom_line(aes(y = sin.days, x = total.days),color="red")+
+  geom_point(aes(total.days,daily_Wind),alpha = .35)
 ```
 
 ## Distibution of errors
@@ -169,9 +204,69 @@ error %>%
   + Errors are mostly normal around 0. However, there seems to be some negative skewing and the peak is not on 0. Indicating there are more values that are overestimate of the wind speed than underestimates. 
   
 ### Notes
-  + Taking the Log of wind speed increases RMSE and make the data less normal
-  + a period of just 1 year works really well
-    + multi-year periods seem to have no effect (small coef) or introduce a lot of error (larger coef)
-    + less than half year periods also have limited benefit and are fitted to have small
-  + sine terms have the largest effect - 
-    + Tend to be fitted with the largest values than cosine terms
+  + 1 year terms 
+    + dominate the other terms and these coefficients are larger
+    + both sine and cosine coefficients are positive 
+      + models preform better when both are positive
+  + 1/2 year terms 
+    + have less effect (small coeff)
+    + introduce a lot of error if the coefficients are large
+    + only positive and both sine and cosine are equal to blunt the summer troughs and increase the winter peaks 
+  + 1/4 year terms 
+    + have limited benefit and are fitted to have small coefficients
+    + tend to help increase the slope slightly
+    + either negative or positive
+  + cos terms have the largest effect - 
+    + wind is the highest in the winter and the data set starts on 01/01
+    + the cosine term was fitted with larger coefficients 
+    
+## Code to save each model 
+  + creates the data frame so it can store each 31 location models 
+    + Warning: running this chunk might override all of the saved models coefficients and metrics\
+```{r}
+#do not run ( will erase the save data frame
+#--data frame initialization for each 31 locations
+
+#break
+#stop
+#no
+#best.models <- read.csv("/content/Wind Models - all locations")
+#best.models<- data.frame(location.id = seq(1,31),
+#                         A= seq(1,31),
+#                          A2= seq(1,31),
+#                          A3=seq(1,31),
+#                          A4=seq(1,31),
+#                          A5=seq(1,31),
+#                          A6=seq(1,31),
+#                          C=seq(1,31),
+#                          error.mean = seq(1,31),
+#                          error.sd = seq(1,31),
+#                         loglik_Norm=seq(1,31),
+ #                         RMSE=seq(1,31))
+```
+  + stores each model's coefficients and preference metrics
+```{r}
+#--change the row for each model 
+local.num<-30
+
+#--save model coeff and performance metrics
+best.models$location.id[local.num]<-location
+best.models$A[local.num]<-best.rsq.wind$A
+best.models$A2[local.num]<-best.rsq.wind$A2
+best.models$A3[local.num]<-best.rsq.wind$A3
+best.models$A4[local.num]<-best.rsq.wind$A4
+best.models$A5[local.num]<-best.rsq.wind$A5
+best.models$A6[local.num]<-best.rsq.wind$A6
+best.models$C[local.num]<-best.rsq.wind$C
+best.models$error.mean[local.num] <-as.numeric(fit$estimate[1])
+best.models$error.sd[local.num] <-as.numeric(fit$estimate[2])
+best.models$loglik_Norm[local.num]<-fit$loglik
+best.models$RMSE[local.num]<-best.rsq.wind$RMSE
+
+```
+  + display results and save data frame to a csv
+```{r}
+best.models
+
+#write.csv(best.models,file="Wind Models - all locations")
+```
