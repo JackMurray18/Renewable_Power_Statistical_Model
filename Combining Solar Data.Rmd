@@ -15,14 +15,13 @@ library(lubridate)
 --------
 From the NSRDB
 ```{r readin}
-data_files <- list.files("C:/Users/jackm/Desktop/Data Science/Project/SolarData_CLE") 
+data_files <- list.files("C:/Users/jackm/Desktop/Data Science/Project/Renewable_Power_Statistical_Model/SOLAR_DATA/3157299fc38c701315a0121a9c61df79/3157299fc38c701315a0121a9c61df79") 
 
 for(i in 1:length(data_files)) 
 {                              
   assign(
     paste0("data", i),                                
-    read.csv(paste0("C:/Users/jackm/Desktop/Data Science/Project/SolarData_CLE/",
-    data_files[i])))
+    read.csv(paste0("C:/Users/jackm/Desktop/Data Science/Project/Renewable_Power_Statistical_Model/SOLAR_DATA/3157299fc38c701315a0121a9c61df79/3157299fc38c701315a0121a9c61df79/",data_files[i])))
 }
 ```
 
@@ -39,12 +38,12 @@ Solar_Data <- function(Solar)
   loc_ID <- Solar$Location.ID[1]
   
   #actually data starts on line 2
-  col.name <- Solar[2,1:8]
+  col.name <- Solar[2,1:10]
   
   #remove first 2 lines --> only contains deifnitions and location information 
   Solar_good <- Solar%>%
     slice(-c(1,2))%>%
-    select(1:8)
+    select(1:10)
   
   #rename the columns with henaders on line 2 
   colnames(Solar_good) <- col.name
@@ -93,12 +92,14 @@ date.all_solar <- all_solar %>%
   mutate(DATE = ymd(paste(Year,Month,Day,sep = "-")),
          DHI.num = as.numeric(DHI),
          GHI.num = as.numeric(GHI),
-         DNI.num = as.numeric(DNI)) %>%
-  select(-Year,-Month,-Day)
+         DNI.num = as.numeric(DNI),
+         CloudType.num = as.numeric(`Cloud Type`),
+         WindSpeed.num = as.numeric(`Wind Speed`))%>%
+  select(-Year,-Month,-Day,-DHI,-GHI,-DNI,-`Cloud Type`,-`Wind Speed`)
 ```
 
 #save as a cvs
 --------------
 ```{r}
-write.csv(date.all_solar, file = "1998-2022 CLE solar data")
+#write.csv(date.all_solar, file = "1998-2022 CLE solar data")
 ```
