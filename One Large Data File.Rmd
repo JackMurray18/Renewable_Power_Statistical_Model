@@ -1,0 +1,73 @@
+---
+title: "Combining Data Into One Large File"
+author: "Jack Murray"
+date: "5/30/2022"
+output: html_document
+---
+
+#library
+--------
+```{r}
+library(tidyverse)
+library(lubridate)
+```
+
+#Data read in
+-------------
+  --> From Combined Solar Data 
+```{r readin}
+data_files <- list.files("C:/Users/jackm/Desktop/Senior - 2nd Semester/Data Science/Project/TIDY_SOLAR_DATA")
+                        ###This is where the data combined by 'Combining Solar Data' is stored
+
+for(i in 1:length(data_files)) 
+{                              
+  assign(
+    paste0("data", i),                                
+    read.csv(paste0("C:/Users/jackm/Desktop/Senior - 2nd Semester/Data Science/Project/TIDY_SOLAR_DATA/",data_files[i])))
+}
+```
+
+Create 1 large data frame
+--------------------------
+```{r}
+#all_solar_data <- data1
+
+#for (j in 1:length(data_files))
+#{
+ # tempdata <- eval(parse(text = paste0("data",i)))
+  all_solar_data <- rbind(data1,data2,data3,data4,data5,data6,data7,data8,data9,data10,data11,data12,data13,data14,data15,data16,data17,data18,data19,data20,data21,data22,data23,data24,data25,data26,data27,data28,data29,data30,data32)
+#}
+```
+
+
+
+## Get a file with lat and long
+-------------------------------------
+```{r, get lat-long for each location}
+all_solar_data.lll <- all_solar_data %>%
+  mutate(lll = paste0(Locations,"&",Latitude,"&",Longitude))
+
+locals<-data.frame(Locations=levels(as.factor(all_solar_data.lll$lll)))
+```
+```{r}
+locals.lll<-separate(locals, Locations, sep = "&", into = c("Locations","Latitude","Longitude"))
+write.csv(locals.lll,file = "Locations with Lat and Long")
+```
+
+#Average Per Day
+--------------------------
+```{r averages}
+Daily_Solar <- all_solar_data %>%
+  group_by(Locations,DATE) %>%
+  summarise(daily_DHI = mean(DHI.num),
+            daily_DNI = mean(DNI.num),
+            daily_GHI = mean(GHI.num),
+            daily_Cloud = mean(CloudType.num),
+            daily_Wind = mean(WindSpeed.num),
+            daily_Cloud = mean(CloudType.num))
+ head(Daily_Solar,10)
+```
+
+```{r}
+write.csv(Daily_Solar, file = "Daily Averages per Location")
+```
