@@ -12,6 +12,7 @@ library(lubridate)
 
 ```{r}
 folders <- list.files("C:/Users/jackm/Desktop/Data Science/Project/Renewable_Power_Statistical_Model/SOLAR_DATA") 
+                      ###This is the file location that all raw data folders are kept
 ```
 
 #IMPORTANT
@@ -21,11 +22,12 @@ folders <- list.files("C:/Users/jackm/Desktop/Data Science/Project/Renewable_Pow
 for (i in 24:length((folders)))
 {
     folder_locations <- paste0("C:/Users/jackm/Desktop/Data Science/Project/SOLAR_DATA/",folders[i],"/",folders[i])
-  
+                                ###This is the file location that all raw data folders are kept
     data <- Solar_Data(folder_locations)
     
     write.csv(data, file = paste0("1998-2020 solar data","_location_",i))
+    ### this is the name of the combined data for each location 
 }
 
 ```
-(see "Combining Solar Data" or "Combining Solar Data-function" for explanation on the function)
+(see "Combining Solar Data-function" for explanation on the function)

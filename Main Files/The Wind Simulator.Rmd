@@ -141,8 +141,8 @@ for(A in seq(from=0,to=1.35,by=.15)) #10
     } # Loop of C
   } # loop of A2
   #--stops the loop when all model combinations are tested
-  #if (nrow(rsq.error.wind.tot)==size)
-  #{
+#  if (nrow(rsq.error.wind.tot)==size)
+ # {
   #  break
   #}
 } #loop of A
@@ -168,13 +168,13 @@ best.rsq.wind
 ## Visualize the fittied equation
 ```{r}
 fitted1<-location1 %>%
-  mutate(sin.days = (best.rmse.wind$A*cos((pi*location1$total.days)/182.5))+ #.7to 1.1
-                    (best.rmse.wind$A2*cos((pi*location1$total.days)/91.25))+ #maybe 0 - very small
-                    (best.rmse.wind$A3*sin((pi*location1$total.days)/182.5))+ #.4 to .7
-                    (best.rmse.wind$A4*sin((pi*location1$total.days)/91.25))+ #.2 to .5
-                    (best.rmse.wind$A5*sin((pi*location1$total.days)/45.625))+ # maybe 0 - very small
-                    (best.rmse.wind$A6*cos((pi*location1$total.days)/45.625))+ #-.1 to 0 
-                    1.1) # from 1 to 1.5
+  mutate(sin.days = (best.rmse.wind$A*cos((pi*location1$total.days)/182.5))+ 
+                    (best.rmse.wind$A2*cos((pi*location1$total.days)/91.25))+ 
+                    (best.rmse.wind$A3*sin((pi*location1$total.days)/182.5))+ 
+                    (best.rmse.wind$A4*sin((pi*location1$total.days)/91.25))+ 
+                    (best.rmse.wind$A5*sin((pi*location1$total.days)/45.625))+ 
+                    (best.rmse.wind$A6*cos((pi*location1$total.days)/45.625))+ 
+                    best.rmse.wind$C) 
 
 fitted1 %>%
   filter(total.days>3000,
@@ -187,9 +187,9 @@ fitted1 %>%
 ## Distibution of errors
 ```{r}
 error <- fitted1%>%
-  mutate(errors = daily_Wind-sin.days)
+  mutate(errors = norm.daily_wimd-sin.days)
 
-fit <- fitdistr(error$errors, densfun="normal") 
+fit <- fitdistr(error$errors, densfun="expontial") 
 fit
 fit$loglik
 
@@ -268,5 +268,5 @@ best.models$RMSE[local.num]<-best.rsq.wind$RMSE
 ```{r}
 best.models
 
-#write.csv(best.models,file="Wind Models - all locations")
+write.csv(best.models,file="Wind Models - all locations")
 ```

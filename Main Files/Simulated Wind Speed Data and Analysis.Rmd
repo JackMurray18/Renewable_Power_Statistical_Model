@@ -1,0 +1,265 @@
+---
+title: "Makes Wind Models"
+author: "Jack Murray"
+date: "4/18/2022"
+output: html_document
+---
+
+```{r library, echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(lubridate)
+library(caret)
+library(sf)
+library(rcompanion)
+library(rnaturalearth)
+```
+
+## Read in Data
+```{r readin, echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+#--This file contains all model parameters and stats
+wind.models <- read.csv("C:/Users/jackm/Desktop/Data Science/Project/Renewable_Power_Statistical_Model/Wind Models - all locations")
+#--Information of the daily average of the whether statics
+daily.data <- read.csv("C:/Users/jackm/Desktop/Data Science/Project/Renewable_Power_Statistical_Model/Daily Averages per Location")
+#--Contains information on the locations codes latitude and longitude
+location.latlong <- read.csv("C:/Users/jackm/Desktop/Data Science/Project/Renewable_Power_Statistical_Model/Locations with Lat and Long")
+
+#add longitude and latiture information to the daily average information
+daily.data.latlong <- daily.data%>%
+  left_join(location.latlong,by="Locations")
+```
+
+## Model Visual: Observed Wind Speed
+```{r, echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+set.seed(100)
+
+orgin_Date <- (as.Date(daily.data$DATE[2]))
+
+# select the and prepared the same data from model fitting
+daily.data.7 <- daily.data %>%
+  filter(Locations==wind.models$location.id[8]) %>%
+  slice_sample(prop=.15) %>%
+  mutate(total.days = day(days(as.Date(DATE)-orgin_Date)),
+         norm.daily_wimd = (daily_Wind-mean(daily_Wind))/sd(daily_Wind))
+
+#--predict values from the observation
+fitted1<-daily.data.7 %>%
+  mutate(predictions = (wind.models$A[8]*cos((pi*total.days)/182.5))+ 
+                    (wind.models$A2[8]*cos((pi*total.days)/91.25))+ 
+                    (wind.models$A3[8]*sin((pi*total.days)/182.5))+ 
+                    (wind.models$A4[8]*sin((pi*total.days)/91.25))+ 
+                    (wind.models$A5[8]*sin((pi*total.days)/45.625))+ 
+                    (wind.models$A6[8]*cos((pi*total.days)/45.625))+ 
+                     wind.models$C[8])
+fitted1%>%
+  filter(total.days>7000)%>%
+  ggplot()+
+  geom_line(aes(x=as_date(`DATE`),y=predictions),color="blue")+
+  geom_point(aes(x=as_date(`DATE`),y=norm.daily_wimd),alpha=.4)+
+  labs(title = "Model of Winter wind speeds at Location 1088251 (Northern PA)",
+       x = "Date", y = "Notmalized Wind Speed") +
+  scale_y_continuous(limits = c(0,3.2))
+```
+
+## Calcualted the statics on the model 
+  - used to de-normalize the data
+```{r location sd and mean,echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+model.stat <- daily.data%>%
+  mutate(model.code = unclass(as.factor(Locations)))%>%
+  group_by(model.code)%>%
+  summarise(model.mean =mean(daily_Wind),
+            model.sd = sd(daily_Wind))
+```
+
+## Model Visual: Simualted Wind Speeds
+```{r}
+#m.n.u <-7 #Model Number Used
+simualted.big.all_local <- data.frame(total.days=-1,predictions=-1,models=-1,location.code=-1)
+
+for(m.n.u in 1:nrow(wind.models))
+{
+  simualted.big <- data.frame(total.days = seq(from=8501,to=9500,by=1))
+  
+  for(i in 1:1000)
+  {
+    #number of days
+    simualted.big$total.days[i]<-(i+8500)
+   
+    simualted.big$models[i] <-(wind.models$A[m.n.u]*cos((pi*simualted.big$total.days[i])/182.5))+ 
+                   (wind.models$A2[m.n.u]*cos((pi*simualted.big$total.days[i])/91.25))+ 
+                   (wind.models$A3[m.n.u]*sin((pi*simualted.big$total.days[i])/182.5))+ 
+                   (wind.models$A4[m.n.u]*sin((pi*simualted.big$total.days[i])/91.25))+ 
+                   (wind.models$A5[m.n.u]*sin((pi*simualted.big$total.days[i])/45.625))+ 
+                   (wind.models$A6[m.n.u]*cos((pi*simualted.big$total.days[i])/45.625))+ 
+                    wind.models$C[m.n.u]
+    #--uniform distribution for values 0-1 to determine if the gamma or normal dist are used
+    rand <- runif(1,0,1)
+
+#--add the error  
+    #--normal dist if the random value is larger than the fraction errors modeled by the gamma dist
+    if(rand>wind.models$prop.gamma[m.n.u])
+    {
+      simualted.big$predictions[i] <- simualted.big$models[i]+(rnorm(1,mean = wind.models$error.mean[m.n.u], sd = wind.models$error.sd[m.n.u]))
+    }
+    else # gamma dist if the random number is less than the fraction of errors modeled by the gamma dist
+    {
+      simualted.big$predictions[i] <-simualted.big$models[i]+ (rgamma(1,shape=wind.models$error.shape[m.n.u],rate=wind.models$error.rate[m.n.u]))
+    }
+
+#--unnormalize the data
+    simualted.big$predictions[i] <- (simualted.big$predictions[i]*model.stat$model.sd[m.n.u]) + model.stat$model.mean[m.n.u]
+    simualted.big$models[i] <- (simualted.big$models[i]*model.stat$model.sd[m.n.u]) + model.stat$model.mean[m.n.u]
+    
+    #location code
+    simualted.big$location.code[i]<-m.n.u
+  }
+  simualted.big.all_local <- rbind(simualted.big,simualted.big.all_local)
+}
+
+
+```
+```{r simplot,fig.asp =.4,fig.width=7, echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+#-- plot the simulated wind speeds
+simualted.big.all_local%>%
+  filter(predictions>0,
+         location.code==15)%>%
+  mutate(future.date = as_date(days(total.days)+days(orgin_Date)),
+         Color = ifelse(total.days==9000,"Model","Prediction Average"))%>%
+  ggplot()+
+  geom_point(aes(x=future.date,y=predictions,color=Color),size=.89)+
+  geom_point(aes(x=future.date,y=predictions),alpha=.8,size=.9,fill="black")+
+  geom_smooth(aes(x=future.date,y=predictions),method = "lm", formula = y ~ sin((pi*x)/200)+cos((pi*x)/200)+sin((pi*x)/100)+cos((pi*x)/100), se=FALSE, color="Dark Green",size=1)+
+  geom_line(aes(x=future.date,y=models),color="blue",size=.85,alpha=.6)+
+  labs(title = "Simulated of Wind Speeds",
+       subtitle = "Location 1177777 (Upstate New York)",
+       caption = "* Negative Simulated Wind Speeds were Removed",
+       x = "Date", y = "Simulated Wind Speed")+
+  scale_color_manual(values=c("blue","#006000"))
+```
+
+## corrleation matrix between all location simualted wind speed
+```{r}
+windspeeds.only <- simualted.big.all_local %>%
+  select(total.days,location.code,predictions)%>%
+  right_join(location.latlong, by=c("location.code"="X"))%>%
+  select(-Longitude,-Latitude,-location.code)%>%
+  pivot_wider(names_from = Locations, values_from = predictions)%>%
+  select(-total.days)
+
+cormatrix.sim.wind<-cor(windspeeds.only)
+cormatrix.sim.wind_df <-as.data.frame(cormatrix.sim.wind,row.names = FALSE)
+cormatrix.sim.wind_df2<-cbind(data.frame(location=names(cormatrix.sim.wind_df)),cormatrix.sim.wind_df)
+
+cormatrix.sim.wind.plot_data <- cormatrix.sim.wind_df2 %>%
+  pivot_longer(cols = 2:32)
+```
+```{r}
+cormatrix.sim.wind.plot_data%>%
+  filter(value<1)%>%
+  ggplot()+
+  geom_bin_2d(aes(x=location,y=name,fill=value))+
+  scale_fill_gradient2(low="blue",mid = "gold", high = "white",midpoint = .45)+
+  theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))+
+  labs(fill="Correlation",title = "Correlation of All Wind Speeds Between All Location",x="Location",y="Location")
+
+```
+
+## corrleation map of top 3 locations  
+```{r corrmap, echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+map<-function(Loca.ID)
+{
+#-- filter data first
+  map.data<-cormatrix.sim.wind.plot_data%>%
+    filter(name==Loca.ID)%>%
+    mutate(location=as.numeric(location))%>%
+    right_join(location.latlong, by=c("location"="Locations"))
+
+#--get refrence location lat and long
+for(ii in 1:nrow(map.data))
+{
+  if(Loca.ID==map.data$location[ii])
+  {
+  lat.log.ref <- c(map.data$Latitude[ii],map.data$Longitude[ii])
+  }
+}
+#--remove the coorelation of 1
+  map.data2 <- map.data %>%
+    filter(value<1)
+  
+#--select the right map    
+world_map <- ne_countries(scale = "small", returnclass = "sf")
+
+North.Am <- world_map %>% 
+  filter(continent %in% "North America")
+
+ggplot(data = North.Am) +
+  geom_sf() + 
+#-- We can add an ENTIRELY new data set inside the geom
+  geom_point(data = map.data2,
+             aes(x = Longitude,
+                 y = Latitude,
+                 colour = value,
+                 size = value),
+             alpha = 1) +
+    labs(
+    title = "Correlation of Wind Speed",
+    subtitle = paste0("Between location ",Loca.ID),
+    color = "Correlation",size = "Correlation")+
+  # Zoom in to a specific view
+  coord_sf(xlim = c(-85, -68), 
+           ylim = c(48, 38))+
+  scale_color_gradient2(low="red", high="blue",mid ="gold",midpoint = .18)+
+  annotate(geom = "text", x= (lat.log.ref[2]), y=lat.log.ref[1]-.5,label = paste0("Location ",Loca.ID))+
+  annotate(geom = "text", x= (lat.log.ref[2]), y=lat.log.ref[1],label = paste0("X"))
+}
+```
+```{r}
+map(Loca.ID<-1060029)
+map(Loca.ID<-1214008)
+map(Loca.ID<-1263298)
+```
+
+## Cluster Analysis of wind speed 
+```{r}
+library(cluster)
+library(factoextra)
+library(som)
+#--gets the average and varainve of wind speed at each location
+simualted.big.all_local %>%
+   filter(predictions>0)%>%
+  group_by(location.code)%>%
+  summarise(ave.sim.speed = mean(predictions),
+            sd.sim.speed = sd(predictions))%>%
+  right_join(location.latlong, by=c("location.code"="X"))%>%
+  filter(Locations==1060029|Locations==1214008|Locations==1263298)
+
+#--gets average corrleation with all other locatsions 
+ave.cor<-cormatrix.sim.wind.plot_data%>%
+  filter(value<1)%>%
+  group_by(location)%>%
+  summarise(ave.cor = mean(value))
+
+#--cobind data of averages and long/lat
+big.local.data <- cbind(ave.sim,ave.cor$ave.cor)%>%
+  right_join(location.latlong, by=c("location.code"="X"))
+
+#--normalize numeric data
+norm_local.data <- apply(X=big.local.data%>%select(-Locations,-location.code,-Latitude,-Longitude),MARGIN = 2, FUN = normalize)
+
+#--conduct the kmenas algorthim
+kclustering <- kmeans(norm_local.data, centers = 3, nstart = 555)
+
+k.means <- aggregate(big.local.data%>%select(-Locations,-location.code,,-Latitude,-Longitude),by=list(cluster=kclustering$cluster), mean)
+
+#--plot kmeans data
+fviz_cluster(kclustering, data = big.local.data%>%select(-Locations,-location.code,-Latitude,-Longitude))
+k.means
+```
+
+```{r}
+simualted.big.all_local%>%
+  select(predictions)%>%
+  filter(predictions>0)%>%
+  summarise(sd=sd(predictions),
+            mean=mean(predictions))
+```
