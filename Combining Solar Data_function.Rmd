@@ -8,7 +8,6 @@ output: html_document
 ```{r library}
 library(tidyverse)
 library(lubridate)
-
 ```
 
 #read in 
@@ -103,5 +102,5 @@ return(date.all_solar)
 #save as a cvs
 --------------
 ```{r}
-#Swrite.csv(date.all_solar, file = paste0(long,lat,"1998-2020 solar data")
+write.csv(date.all_solar, file = paste0(long,lat,"1998-2020 solar data")
 ```
