@@ -1,3 +1,5 @@
+![Inkodo-2132023_60711_PM3](https://user-images.githubusercontent.com/93177143/218559533-a89c7d24-2f71-40c0-aabd-7602af3688a9.jpeg)
+
 Renewable_Power_Statistical_Model
 Statistical Models For U.S. Electricity Grid Renewable Production
 
