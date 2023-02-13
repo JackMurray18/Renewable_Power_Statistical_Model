@@ -1,9 +1,9 @@
 ![Inkodo-2132023_60711_PM3](https://user-images.githubusercontent.com/93177143/218559533-a89c7d24-2f71-40c0-aabd-7602af3688a9.jpeg)
 
 Renewable_Power_Statistical_Model
-Statistical Models For U.S. Electricity Grid Renewable Production
+# Statistical Models For U.S. Electricity Grid Renewable Production
 
-Getting Data
+## Getting Data
 1.	Go to https://nsrdb.nrel.gov/
 2.	Open The NSRDB Viewer Tab
 3.	Use the 'Download Data' tab and select a specific location or area
@@ -13,7 +13,7 @@ a.	Ce sure to select leap days
 a.	This will download as a zip file and the data will have to be extracted 
 6.	Store all extracted folders into one larger folder
 
-1 - Combining Solar Data and Combining Solar Data Function 
+## 1 - Combining Solar Data and Combining Solar Data Function 
 
 •	Purpose 
 o	The data from the NSRDB is separated on different files for each year and location and it must be combined first. These two files work in tandem to combine all of the years at one location
@@ -28,7 +28,7 @@ o	A folder that stores all of the raw data folders downloaded from the NSRDB
 3.	Run the Combining Solar Data File
 a.	This will save each locations combined data file to the working directory
 
-2 - One Large File 
+## 2 - One Large File 
 
 •	Purpose 
 
@@ -40,7 +40,7 @@ o	Calculates the daily averages of each field
 
 o	Folder of all data created by the 'Combining Solar Data' 
 
- 3 - The Wind Simulator
+## 3 - The Wind Simulator
 	
 •	Purpose 
 
@@ -63,7 +63,7 @@ b.	Only 15% of all data is used to decreasing processing time
 5.	The 'local.num' needs to be increased by 1 after each location is fitted to avoid erasing any data
 -- KEY-- each location is fit one at a time due to long processing times and length of the code 
 
-4 - Simulated Wind Speed and Data Analysis
+## 4 - Simulated Wind Speed and Data Analysis
 
 •	Purpose
 
