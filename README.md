@@ -26,7 +26,7 @@ a.	This will download as a zip file and the data will have to be extracted
 	1. Open the Combining Solar Data Function and run the function into the environment
 	2. Open Combining Solar Data and change the file address to where the raw data is stored (lines 14 and 24)
 	3. Run the Combining Solar Data File
-		a. This will save each locations combined data file to the working directory
+		- This will save each locations combined data file to the working directory
 
 ## 2 - One Large File 
 
@@ -46,13 +46,14 @@ a.	This will download as a zip file and the data will have to be extracted
 	- Created from the 'Combining Solar Data' 
 * Note 
 	1. Preprocessing 
-		a. The data is normalized by subtracting wind speeds by the location's mean wind speed and dividing by the standard deviation
-		b. Only 15% of all data is used to decreasing processing time
+		- The data is normalized by subtracting wind speeds by the location's mean wind speed and dividing by the standard deviation
+		- Only 15% of all data is used to decreasing processing time
 	2. The model works by using thousands of combinations of sinusoidal coefficients and calculating the error with the actual value 
 	3. The model with the least error is selected 
 	4. Error distributions are then fitted. The cut off point between what errors follow a normal or gamma distribution is manually decided to roughly minimize the log-likelihood of both distributions
 	5. The 'local.num' needs to be increased by 1 after each location is fitted to avoid erasing any data
-*Strong* __KEY__ each location is fit one at a time due to long processing times and length of the code 
+
+ __KEY__ each location is fit one at a time due to long processing times and length of the code 
 
 ## 4 - Simulated Wind Speed and Data Analysis
 
