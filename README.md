@@ -15,14 +15,14 @@ a.	This will download as a zip file and the data will have to be extracted
 
 ## 1 - Combining Solar Data and Combining Solar Data Function 
 
-•	Purpose 
-o	The data from the NSRDB is separated on different files for each year and location and it must be combined first. These two files work in tandem to combine all of the years at one location
-o	The data is also cleaned and put into a tidy format
+* Purpose 
+	- The data from the NSRDB is separated on different files for each year and location and it must be combined first. These two files work in tandem to combine all of the years at one location
+	- The data is also cleaned and put into a tidy format
 
-•	Data Used
-o	A folder that stores all of the raw data folders downloaded from the NSRDB
+* Data Used
+	- A folder that stores all of the raw data folders downloaded from the NSRDB
 
-•	Note
+* Note
 1.	Open the Combining Solar Data Function and run the function into the environment
 2.	Open Combining Solar Data and change the file address to where the raw data is stored (lines 14 and 24)
 3.	Run the Combining Solar Data File
